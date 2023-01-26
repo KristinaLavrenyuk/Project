@@ -1,4 +1,6 @@
+
 #include <Windows.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -30,7 +32,7 @@ void SetFont()
 {
     CONSOLE_FONT_INFOEX cfi;
     //cfi.cbSize = sizeof(CONSOLE_FONT_INFOEX);
-    //GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), false, &cfi);
+   // GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), false, &cfi);
     cfi.cbSize = 84;
     cfi.nFont = 6;
     cfi.dwFontSize.X = 8;
@@ -62,6 +64,29 @@ void WriteConsoleBuffer()
     SMALL_RECT writeArea = { 0, 0, SIZE_X, SIZE_Y };    // область буфера для перезаписи 
 
     WriteConsoleOutput(hConsole, consBuffer, bufferSize, charPosition, &writeArea); 
+}
+
+void DrawFrame(int x, int y)
+{
+    for (int i = 0; i < y; i++)
+    {
+        for (int j = 0; j < x; j++)
+        {
+            if ((i == 0 || i == y - 1) && (j == 0 || j == x - 1)) //Углы рамки
+            {
+                if (i == 0 && j == 0) scene[i][j] = 9556; // ╔ 201
+                else if (i == 0 && j == x - 1) scene[i][j] = 9559; // ╗ 187
+                else if (i == y - 1 && j == 0) scene[i][j] = 9562; // ╚ 200
+                else if (i == y - 1 && j == x - 1) scene[i][j] = 9565; // ╝ 188
+            }
+            else //Стороны рамки
+            {
+                if (i == 0 || i == y - 1) scene[i][j] = 9552; // ═ 205
+                if (i == 2 && j > 0 && j < x - 1) scene[i][j] = 9552; // ═ 205
+                if (j == 0 || j == x - 1) scene[i][j] = 9553; // ║ 186
+            }
+        }
+    }
 }
 
 struct laser
@@ -222,6 +247,8 @@ struct
     {
         if (deadFlag == 0)
         {
+            if (x > 64) x = 64;
+            if (y < 3) y = 3;
             XBroken = x;
             YBroken = y;
             for (int i = 0; i < 4; i++)
@@ -310,6 +337,82 @@ struct
     }
 } we;
 
+struct
+{
+    wchar_t view[2][11] =
+    {
+        {'S', 't', 'a', 'r', 't', ' ', 'g', 'a', 'm', 'e'},
+        {'E', 'x', 'i', 't', ' ', ' ', ' ', ' ', ' ', ' '}
+    };
+
+    wchar_t choose = 17;
+    int flagChoose = 0;
+    int flagExit = 0;
+    wchar_t win[9] = { 'Y', 'o', 'u', ' ', 'w', 'i', 'n', '!' };
+    wchar_t die[12] = { 'G', 'a', 'm', 'e', ' ', 'o', 'v', 'e', 'r', '!'};
+
+    void WriteMenu()
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            for (int j = 0; j < 20; j++)
+            {
+                if ((i == 0 || i == 7 - 1) && (j == 0 || j == 20 - 1)) //Углы рамки
+                {
+                    if (i == 0 && j == 0) scene[i + 12][j + 28] = 9556; // ╔ 201
+                    else if (i == 0 && j == 20 - 1) scene[i + 12][j + 28] = 9559; // ╗ 187
+                    else if (i == 7 - 1 && j == 0) scene[i + 12][j + 28] = 9562; // ╚ 200
+                    else if (i == 7 - 1 && j == 20 - 1) scene[i + 12][j + 28] = 9565; // ╝ 188
+                }
+                else //Стороны рамки
+                {
+                    if (i == 0 || i == 7 - 1) scene[i + 12][j + 28] = 9552; // ═ 205
+                    if (j == 0 || j == 20 - 1) scene[i + 12][j + 28] = 9553; // ║ 186
+                }
+            }
+        }
+        scene[14][42] = choose;
+
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 11; j++)
+            {
+                 scene[14 + i][30 + j] = view[i][j];
+            }
+        }
+        while (true)
+        {
+            if (GetAsyncKeyState(VK_UP))
+            {
+                scene[15][42] = ' ';
+                scene[14][42] = choose;
+            }
+            if (GetAsyncKeyState(VK_DOWN))
+            {
+                scene[14][42] = ' ';
+                scene[15][42] = choose;
+            }
+            if (GetAsyncKeyState(VK_RETURN))
+            {
+                flagChoose = 1;
+                if (scene[15][42] == choose) flagExit = 1;
+                for (int i = 0; i < 7; i++)
+                {
+                    for (int j = 0; j < 20; j++)
+                    {
+                        scene[12 + i][28 + j] = ' ';
+                    }
+                }
+                break;
+            }
+            WriteConsoleBuffer();
+        }
+        
+    }
+
+} menu;
+
+
 int main()
 {
     char level[6] = "level", points[6] = "point", name[10] = "Star Wars", lifes[6] = { 3, 3, 3, 3, 3 };
@@ -319,27 +422,16 @@ int main()
     SetConsoleSize(SIZE_X, SIZE_Y);
     SetFont();
 
-    //Создание рамки
-    for (int i = 0; i < SIZE_Y; i++)
+    do
     {
-        for (int j = 0; j < SIZE_X; j++)
-        {
-            if ((i == 0 || i == SIZE_Y - 1) && (j == 0 || j == SIZE_X - 1)) //Углы рамки
-            {
-                if (i == 0 && j == 0) scene[i][j] = 9556; // ╔ 201
-                else if (i == 0 && j == SIZE_X - 1) scene[i][j] = 9559; // ╗ 187
-                else if (i == SIZE_Y - 1 && j == 0) scene[i][j] = 9562; // ╚ 200
-                else if (i == SIZE_Y - 1 && j == SIZE_X - 1) scene[i][j] = 9565; // ╝ 188
-            }
-            else //Стороны рамки
-            {
-                if (i == 0 || i == SIZE_Y - 1) scene[i][j] = 9552; // ═ 205
-                if (i == 2 && j > 0 && j < SIZE_X - 1) scene[i][j] = 9552; // ═ 205
-                if (j == 0 || j == SIZE_X - 1) scene[i][j] = 9553; // ║ 186
-            }
-        }
-    }
+        menu.WriteMenu();
+    } while (menu.flagChoose == 0);
 
+    if (menu.flagExit) return 0;
+
+    //Создание рамки
+    DrawFrame(SIZE_X, SIZE_Y);
+    
     //Заголовок (название игры, уровень, очки, жизни)
     for (int i = 0; i < 21; i++)
     {
@@ -371,135 +463,201 @@ int main()
             scene[2][i + 41] = 9577; // ╩ 202
         }
     }
-    for (int i = 0; i < 6; i++) scene[1][i + 59] = lifes[i];
-
-    vrag.positionX = rand() % 68 + 1; 
-
-    we.MoveTo(SIZE_X / 2, SIZE_Y - 2);
-    vrag.MoveTo(vrag.positionX, 4);
-
-    float step = 10;
-
     while (true)
     {
-        SetCursor(12, 1);
+        for (int i = 0; i < 6; i++) scene[1][i + 59] = lifes[i];
 
-        // Движение врага
-        if (vrag.time >= step)
-        {
-            vrag.Effect(we.positionX);
-            vrag.time = 0;
-        }
+        vrag.positionX = rand() % 68 + 1;
 
-        if (we.time == 2)
+        we.MoveTo(SIZE_X / 2, SIZE_Y - 2);
+        vrag.MoveTo(vrag.positionX, 4);
+
+        float step = 10;
+
+        while (true)
         {
-            if (GetAsyncKeyState(VK_LEFT)) we.StepToLeft();
-            if (GetAsyncKeyState(VK_RIGHT)) we.StepToRight();
-            if (GetAsyncKeyState(VK_SPACE))
+            SetCursor(12, 1);
+
+            // Движение врага
+            if (vrag.time >= step)
             {
-                if (we.laser.flagFire == 0)
+                vrag.Effect(we.positionX);
+                vrag.time = 0;
+            }
+
+            if (we.time == 2)
+            {
+                if (GetAsyncKeyState(VK_LEFT)) we.StepToLeft();
+                if (GetAsyncKeyState(VK_RIGHT)) we.StepToRight();
+                if (GetAsyncKeyState(VK_SPACE))
                 {
-                    we.laser.Fire(we.positionX, we.positionY - 1);
-                    we.laser.flagFire = 1;
+                    if (we.laser.flagFire == 0)
+                    {
+                        we.laser.Fire(we.positionX, we.positionY - 1);
+                        we.laser.flagFire = 1;
+                    }
+                }
+                we.time = 0;
+            }
+
+            // Стрельба врага
+
+            if (vrag.positionX + 2 <= we.positionX + 2 && vrag.positionX + 2 >= we.positionX - 2)
+            {
+                if (vrag.laser.flagFire == 0)
+                {
+                    vrag.laser.oldXLaser = 10;
+                    vrag.laser.oldYLaser = 10;
+                    vrag.laser.flagFire = 1;
+                    vrag.laser.Fire(vrag.positionX + 2, vrag.positionY + 3);
                 }
             }
-            we.time = 0;
-        }
 
-        // Стрельба врага
- 
-        if (vrag.positionX + 2 <= we.positionX + 2 && vrag.positionX + 2 >= we.positionX - 2)
-        {
-            if (vrag.laser.flagFire == 0)
+
+            if (vrag.laser.flagFire == 1)
             {
-                vrag.laser.oldXLaser = 10;
-                vrag.laser.oldYLaser = 10;
-                vrag.laser.flagFire = 1;
-                vrag.laser.Fire(vrag.positionX + 2, vrag.positionY + 3);
+                vrag.laser.timeLaser++;
+                if (vrag.laser.timeLaser == 1)
+                {
+                    vrag.laser.Fire(vrag.laser.positionXLaser, ++vrag.laser.positionYLaser);
+                    vrag.laser.timeLaser = 0;
+                }
             }
-        }
 
-
-        if (vrag.laser.flagFire == 1)
-        {
-            vrag.laser.timeLaser++;
-            if (vrag.laser.timeLaser == 1)
+            if (vrag.laser.positionYLaser - 1 == SIZE_Y - 3)
             {
-                vrag.laser.Fire(vrag.laser.positionXLaser, ++vrag.laser.positionYLaser);
-                vrag.laser.timeLaser = 0;
+                vrag.laser.ClearFire(vrag.laser.positionXLaser, vrag.laser.positionYLaser);
+                vrag.laser.flagFire = 0;
+                if (vrag.laser.positionXLaser == we.positionX)
+                {
+                    positionLifes--;
+                    scene[1][positionLifes] = ' ';
+
+                    if (positionLifes == 59)
+                    {
+                        positionLifes = 64;
+                        we.points = 0;
+                        vrag.lifes = 3;
+                        vrag.deadFlag = 1;
+                        vrag.VragDead(vrag.positionX, vrag.positionY);
+                        for (int i = 0; i < 1; i++)
+                        {
+                            for (int j = 0; j < 11; j++)
+                            {
+                                scene[i + 10][j + 33] = menu.die[j];
+                            }
+                        }
+                        do
+                        {
+                            menu.WriteMenu();
+                        } while (menu.flagChoose == 0);
+                        for (int i = 0; i < 1; i++)
+                        {
+                            for (int j = 0; j < 11; j++)
+                            {
+                                scene[i + 10][j + 33] = ' ';
+                            }
+                        }
+                        if (menu.flagExit) return 0;
+                        else break;
+                    }
+                }
+                vrag.laser.positionXLaser = 0;
+                vrag.laser.positionYLaser = 0;
             }
-        }
 
-        if (vrag.laser.positionYLaser - 1 == SIZE_Y - 3)
-        {
-            vrag.laser.ClearFire(vrag.laser.positionXLaser, vrag.laser.positionYLaser);
-            vrag.laser.flagFire = 0;
-            if (vrag.laser.positionXLaser == we.positionX)
+            // Наша стрельба
+            if (we.laser.flagFire == 1) we.laser.Fire(we.laser.positionXLaser, --we.laser.positionYLaser);
+
+            if (we.laser.positionYLaser - 1 < 4 || (we.laser.positionYLaser == vrag.positionY + 2 && we.laser.positionXLaser >= vrag.positionX && we.laser.positionXLaser <= vrag.positionX + 5))
             {
-                positionLifes--;
-                scene[1][positionLifes] = ' ';
-
+                we.laser.ClearFire(we.laser.positionXLaser, we.laser.positionYLaser);
+                we.laser.flagFire = 0;
+                if (we.laser.positionYLaser == vrag.positionY + 2 && we.laser.positionXLaser >= vrag.positionX && we.laser.positionXLaser <= vrag.positionX + 5)
+                {
+                    vrag.lifes--;
+                    vrag.deadFlag = 1;
+                    vrag.VragDead(vrag.positionX, vrag.positionY);
+                    vrag.deadFlag = 0;
+                }
+                we.laser.positionXLaser = 0;
+                we.laser.positionYLaser = 0;
             }
-            vrag.laser.positionXLaser = 0;
-            vrag.laser.positionYLaser = 0;
-        }
 
-        // Наша стрельба
-        if (we.laser.flagFire == 1) we.laser.Fire(we.laser.positionXLaser, --we.laser.positionYLaser);
-
-        if (we.laser.positionYLaser - 1 < 4 || (we.laser.positionYLaser == vrag.positionY + 2 && we.laser.positionXLaser >= vrag.positionX && we.laser.positionXLaser <= vrag.positionX + 5))
-        {
-            we.laser.ClearFire(we.laser.positionXLaser, we.laser.positionYLaser);
-            we.laser.flagFire = 0;
-            if (we.laser.positionYLaser == vrag.positionY + 2 && we.laser.positionXLaser >= vrag.positionX && we.laser.positionXLaser <= vrag.positionX + 5)
+            // Смерть врага и пояление нового
+            if (vrag.lifes == 0)
             {
-                vrag.lifes--;
-                vrag.deadFlag = 1;
+                we.points++;
+                if (we.points == 3)
+                {
+                    positionLifes = 64;
+                    vrag.lifes = 3;
+                    we.points = 0;
+                    vrag.deadFlag = 1;
+                    vrag.VragDead(vrag.positionX, vrag.positionY);
+                    for (int i = 0; i < 1; i++)
+                    {
+                        for (int j = 0; j < 9; j++)
+                        {
+                            scene[i + 10][j + 33] = menu.win[j];
+                        }
+                    }
+                    do
+                    {
+                        menu.WriteMenu();
+                    } while (menu.flagChoose == 0);
+
+                    for (int i = 0; i < 1; i++)
+                    {
+                        for (int j = 0; j < 9; j++)
+                        {
+                            scene[i + 10][j + 33] = ' ';
+                        }
+                    }
+
+                    if (menu.flagExit) return 0;
+                    else break;
+                }
+
                 vrag.VragDead(vrag.positionX, vrag.positionY);
+                vrag.deadFlag = 1;
+                vrag.positionX = rand() % 68 + 1;
+                vrag.positionY = 3;
+                vrag.lifes = 3;
+                vrag.VragSpawn(vrag.positionX, vrag.positionY);
+
+                if (step > 3) step -= 0.5;
+            }
+
+
+            wchar_t pointsStr[4]{};
+            wsprintf(pointsStr, L"%d", we.points);   // Перевод очков из числа в строку 
+            for (int i = 0; i < wcslen(pointsStr); i++) scene[1][47 + i] = pointsStr[i];
+
+            // Вывод сцены
+            WriteConsoleBuffer();
+
+            if (vrag.timeBroken == 1)
+            {
+                vrag.ClearBroken();
+                vrag.timeBroken = 0;
+            }
+
+            if (vrag.deadFlag == 1)
+            {
+                vrag.VragDead(vrag.positionX, vrag.positionY);
+                vrag.timeBroken++;
                 vrag.deadFlag = 0;
             }
-            we.laser.positionXLaser = 0;
-            we.laser.positionYLaser = 0;
+
+            if (we.time == 1) scene[we.positionY][we.positionX] = we.we[0];
+            if (vrag.time == 1) vrag.VragSpawn(vrag.positionX, vrag.positionY);
+
+            vrag.time++;
+            we.time++;
+
+            Sleep(timeAll);
         }
-
-        // Смерть врага и пояление нового
-        if (vrag.lifes == 0)
-        {
-            we.points++;
-
-            vrag.VragDead(vrag.positionX, vrag.positionY);
-            vrag.deadFlag = 1;
-            vrag.positionX = rand() % 68 + 1;
-            vrag.positionY = 3;
-            vrag.lifes = 3;
-            vrag.VragSpawn(vrag.positionX, vrag.positionY);
-
-            if (step > 3) step -= 0.5;
-        }
-
-        // Вывод сцены
-        WriteConsoleBuffer();
-
-        if (vrag.timeBroken == 1)
-        {
-            vrag.ClearBroken();
-            vrag.timeBroken = 0;
-        }
-
-        if (vrag.deadFlag == 1)
-        {
-            vrag.VragDead(vrag.positionX, vrag.positionY);
-            vrag.timeBroken++;
-            vrag.deadFlag = 0;
-        }
-
-        if (we.time == 1) scene[we.positionY][we.positionX] = we.we[0];
-        if (vrag.time == 1) vrag.VragSpawn(vrag.positionX, vrag.positionY);
-
-        vrag.time++;
-        we.time++;
-
-        Sleep(timeAll);
     }
     system("pause");
 }
